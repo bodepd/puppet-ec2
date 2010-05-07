@@ -1,0 +1,31 @@
+# s no warranty
+not only is there no implied warranty for this provider, I actually know for a fact that it is full of bugs and should not be used by any sensible person. 
+
+# why ruby bindings
+
+I chose the ruby bindings and not the tools for 2 reasons:
+
+1. they accept credentials, not certs (harder to pass certs through a provider)
+2. extra requirement for Java.
+
+# current state
+
+This is just a prototype to demonstrate that its possible to use puppet to model dependencies between EC2 instances.
+
+Its nowhere near done, it just has some very basic functionality.
+   - ensure that a certain image is present.
+   - ensure that a certain image is absent.
+
+## uniqueness hack
+
+EC2 instances dont exactly work with the puppet model.
+
+In puppet, we need to be able to determine uniqueness for a resource when its created.
+
+in EC2, the unique id for an instance is not available until after the image is created.
+
+for this reason, I am using security_group to determine uniqueness. 
+
+this assumes that each security group can only have one (non-terminated) instance at a time. If you get into a state where this is not true, it may be required to clean up your instances manually to get into this state.
+
+Hopefully, EC2 will provide a means in the future for determining how to id machines.
