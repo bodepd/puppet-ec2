@@ -10,7 +10,7 @@ Puppet::Type.type(:noder).provide(:ec2) do
   @doc = "
 This is the provider for noder that builds nodes on ec2
 
-  there will likely be a virtual shit-ton of documentation added later
+  there will likely be a virtual shit-ton (VST) of documentation added later
 "
 
   #
@@ -29,7 +29,7 @@ This is the provider for noder that builds nodes on ec2
 
   # for each ec2 instance
   #   -  build up the group hash
-  def self.organize(ec2)
+  def self.id_instances()
     # all instances
     @instances ||= {}
     @ec2.each do |k, v|
@@ -45,10 +45,14 @@ This is the provider for noder that builds nodes on ec2
     reservations = ec2.describe_instances.reservationSet
     if reservations
       reservations.item.each do |instance|
-        if instance.groupSet.item.size > 1 || instance.instancesSet.item.size > 1
-          raise Puppet::Exception, 'Puppet only allows 1 instance per group'
+        # ignore all groups that are not prefixed with PUPPET_ (namevars)
+        namevars = instance.groupSet.item.select do |item|
+          item.groupId =~ /^PUPPET_/
         end
-        instance.groupSet.item.each do |group|
+        if namevars.size > 1 || instance.instancesSet.item.size > 1
+          raise Exception, 'Puppet only allows 1 instance per group'
+        end
+        namevars.each do |group|
           gid = group.groupId
           instance.instancesSet.item.each do |instance|
             state = instance.instanceState.name
@@ -77,6 +81,10 @@ This is the provider for noder that builds nodes on ec2
     @ec2[username]
   end
 
+  #
+  # return the actual ec2 instance id for an instance identified by
+  # its membership to a security group
+  #
   def self.instance_id(group)
     if @instances[group]
       @instances[group][:instance_id]
@@ -85,6 +93,9 @@ This is the provider for noder that builds nodes on ec2
     end
   end
 
+  #
+  # returns the current state for an instance.
+  #
   def self.instance_state(group)
     if @instances[group]
       @instances[group][:state]
@@ -95,10 +106,71 @@ This is the provider for noder that builds nodes on ec2
 
   # hash the resources per user
   def self.prefetch(resources) 
+#puts resources.to_yaml
     resources.each do |k,v|
-       ec2_connection(v[:user], v[:password])
+      ec2_connection(v[:user], v[:password])
     end
-    organize(@ec2)
+    id_instances()
+  end
+#
+#  def self.get_type(mem, cpu, arch='i386')
+#    if arch == 'i386'
+#      if mem > 1700000000
+#        raise Exception, "Maximum memory is =~1.7GB with i386"
+#      else
+#        if cpu == 1
+#          # memory = 1.7
+#          # EC2 compute units = 1
+#          'm1.small'
+#        elsif cpu <= 5
+#          'c1.medium'
+#        else
+#          raise Exception, "Maximum cpu units for ec2 with i386 is 5, not #{cpu}"
+#        end
+#      end
+#    elsif arch == 'x86_64'
+#      if mem <= 7500000000
+#        if cpu <= 4
+#          'm1.large'
+#        else
+#          # need something more memory intensive
+#        end
+#      elsif mem <= 15000000000
+#        if cpu <= 8
+#          'm1.xlarge'
+#        end
+#      elsif mem <= 17100000000
+#        if cpu <= 6.5
+#          'm2.xlarge'
+#        elsif cpu <= 20
+#          'c1.xlarge'
+#        else
+#          raise Exception, 'cannot support < 17.1GB RAM with more than 20 cpu units'
+#        end
+#      elsif mem <= 34200000000
+#
+#        'm2.2xlarge'
+#      elsif mem <= 68400000000
+#        if cpu <= 26
+#          'm2.4xlarge'
+#        else
+#          raise Exception, "ec2 does not support more than 26 CPU units"
+#        end
+#      else
+#        raise Exception, "ec2 does not support more than 68.4GB RAM"
+#      end
+#    end
+    #if memory < 2000000000 && cpu == 1 && arch == 'i386'
+    #  'm1.small'
+    #end
+#  end
+
+  def initialize(resource)
+    # essentially doing a provider munge to prefix
+    # identifying security groups with PUPPET
+    # this is required to simply allow other groups.
+    resource[:name] = "PUPPET_#{resource[:name]}"
+    super(resource)
   end
 
   #
@@ -125,11 +197,14 @@ This is the provider for noder that builds nodes on ec2
     ec2.run_instances(
       {
         :image_id => @resource.value(:image),
+        # security groups
         :security_group => group,
+        :instance_type => @resource.value(:type),
       } 
     )
   end
   
+
   # determine if an ec2 instance exists
   def exists?
     # if we have a security group with our name and it has at least one member
