@@ -5,7 +5,7 @@
 #
 require 'AWS'
 
-Puppet::Type.type(:noder).provide(:ec2) do
+Puppet::Type.type(:ec2).provide(:ec2) do
 
   @doc = "
 This is the provider for noder that builds nodes on ec2
@@ -223,6 +223,18 @@ This is the provider for noder that builds nodes on ec2
     else
       puts 'cannot remove default'
     end
+  end
+
+  # reboot the instance when we receive a signal
+  def restart
+    group = @resource.value(:name)
+    instance = self.class.instance_id(group)
+    ec2 = self.class.ec2(@resource.value(:user))
+puts 'rebooting'
+    puts ec2.reboot_instances({:instance_id => instance}).to_yaml
+    puts ec2.describe_instances({:instance_id => instance}).to_yaml
+   # state = self.class.instance_state(@resource.value(:name))
+   # state == 'running' || state == 'pending'
   end
 
 #  private
