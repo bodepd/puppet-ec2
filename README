@@ -8,6 +8,8 @@ I chose the ruby bindings and not the tools for 2 reasons:
 1. they accept credentials, not certs (harder to pass certs through a provider)
 2. extra requirement for Java.
 
+I may regret this decision later, the libraries arent as mature as I had hoped    @(8^( }-|<
+
 # current state
 
 This is just a prototype to demonstrate that its possible to use puppet to model dependencies between EC2 instances.
