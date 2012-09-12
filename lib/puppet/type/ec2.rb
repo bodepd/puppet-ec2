@@ -109,7 +109,7 @@ Puppet::Type.newtype(:ec2) do
   end
 
   newparam(:type) do
-	  VALID_TYPES = [ 'm1.small', 'm1.large', 'm1.xlarge',
+	  VALID_TYPES = [ 't1.micro', 'm1.small', 'm1.large', 'm1.xlarge',
         'm2.xlarge', 'm2.2xlarge', 'm2.4xlarge', 'c1.medium', 'c1.xlarge']
         # check valid values from array
 	  newvalues(*VALID_TYPES)
@@ -117,7 +117,7 @@ Puppet::Type.newtype(:ec2) do
     munge do |value|
       value.downcase
     end
-    defaultto 'm1.small'
+    defaultto 't1.micro'
   end
 
 
